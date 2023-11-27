@@ -92,14 +92,25 @@ pub fn run_command(cmd: &str, args: &[impl AsRef<OsStr> + Debug], silent: bool, 
   let output = process::Command::new(cmd).args(args).stdin(process::Stdio::null()).output().map_err(RunError::Spawn)?;
 
   if !silent {
-    std::io::stdout().write_all(&output.stdout)?;
-    std::io::stdout().write_all(&output.stderr)?;
-  }
-
-  if !output.status.success() {
-    if silent {
+    #[cfg(windows)] {
+      std::io::stdout().write_all(String::from_utf8_lossy(&output.stdout).as_bytes())?;
+      std::io::stdout().write_all(String::from_utf8_lossy(&output.stderr).as_bytes())?;
+    }
+    #[cfg(not(windows))] {
       std::io::stdout().write_all(&output.stdout)?;
       std::io::stdout().write_all(&output.stderr)?;
+    }
+  }
+  if !output.status.success() {
+    if silent {
+      #[cfg(windows)] {
+        std::io::stdout().write_all(String::from_utf8_lossy(&output.stdout).as_bytes())?;
+        std::io::stdout().write_all(String::from_utf8_lossy(&output.stderr).as_bytes())?;
+      }
+      #[cfg(not(windows))] {
+        std::io::stdout().write_all(&output.stdout)?;
+        std::io::stdout().write_all(&output.stderr)?;
+      }
     }
     RunError::Execute(output.status.code()).pipe(Err)?;
   };
